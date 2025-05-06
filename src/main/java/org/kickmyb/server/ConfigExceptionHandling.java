@@ -26,7 +26,7 @@ public class ConfigExceptionHandling extends ResponseEntityExceptionHandler {
         // utile pour déboguer
         // ex.printStackTrace();
         // On prend le nom court de l'exception comme corps de la réponse HTTP 400 comme code
-        String bodyOfResponse = ex.getClass().getSimpleName();
+        String bodyOfResponse = ex.getMessage();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(new MediaType("text", "plain", StandardCharsets.UTF_8));
         return handleExceptionInternal(ex, bodyOfResponse, headers, HttpStatus.BAD_REQUEST, request);
