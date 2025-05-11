@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 // TODO move to @AuthenticationPrincipal user
@@ -34,10 +35,11 @@ public class ControllerTask {
     }
 
     @GetMapping(value = "/api/progress/{taskID}/{value}", produces = "text/plain")
-    public @ResponseBody String updateProgress(@PathVariable long taskID, @PathVariable int value) {
+    public @ResponseBody String updateProgress(@PathVariable long taskID, @PathVariable int value) throws AccessDeniedException {
         System.out.println("KICKB SERVER : Progress for task : " + taskID + " @" + value);
         ConfigHTTP.attenteArticifielle();
-        serviceTask.updateProgress(taskID, value);
+        MUser user = currentUser();
+        serviceTask.updateProgress(taskID, value, user);
         return "";
     }
 
@@ -55,6 +57,15 @@ public class ControllerTask {
         ConfigHTTP.attenteArticifielle();
         MUser user = currentUser();
         return serviceTask.detail(id, user);
+    }
+
+    @DeleteMapping("/api/delete/{id}")
+    public @ResponseBody String delete(@PathVariable long id) throws AccessDeniedException {
+        System.out.println("KICKB SERVER : Delete  with cookie ");
+        ConfigHTTP.attenteArticifielle();
+        MUser user = currentUser();
+        serviceTask.deleteOne(id, user);
+        return "";
     }
 
     /**

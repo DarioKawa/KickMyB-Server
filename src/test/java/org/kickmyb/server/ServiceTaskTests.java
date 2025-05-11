@@ -15,6 +15,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.nio.file.AccessDeniedException;
 import java.util.Date;
 
 import static org.assertj.core.api.Fail.fail;
@@ -111,5 +112,77 @@ class ServiceTaskTests {
         } catch (Exception e) {
             assertEquals(ServiceTask.Existing.class, e.getClass());
         }
+    }
+
+    @Test
+    void testDeleteTask() throws ServiceTask.Empty, ServiceTask.TooShort, ServiceTask.Existing, AccessDeniedException {
+        MUser u = new MUser();
+        u.username = "M. Test";
+        u.password = passwordEncoder.encode("Passw0rd!");
+        userRepository.saveAndFlush(u);
+
+        AddTaskRequest atr = new AddTaskRequest();
+        atr.name = "Tâche de test";
+        atr.deadline = Date.from(new Date().toInstant().plusSeconds(3600));
+
+        serviceTask.addOne(atr, u);
+
+        assertEquals(1, serviceTask.home(u.id).size());
+
+        u = userRepository.findByUsername(u.username).get();
+
+        long taskID = serviceTask.home(u.id).get(0).id;
+        serviceTask.deleteOne(taskID, u);
+
+        assertEquals(0, serviceTask.home(u.id).size());
+    }
+
+    @Test
+    void testDeleteTaskNotFound() throws ServiceTask.Empty, ServiceTask.TooShort, ServiceTask.Existing, AccessDeniedException {MUser u = new MUser();
+        u.username = "M. Test";
+        u.password = passwordEncoder.encode("Passw0rd!");
+        userRepository.saveAndFlush(u);
+
+        long taskID = 1234567890L;
+
+        try{
+            serviceTask.deleteOne(taskID, u);
+            fail("Aurait du lancer IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertEquals(IllegalArgumentException.class, e.getClass());
+        }
+        catch (Exception e) {
+            fail("Aurait du lancer IllegalArgumentException");
+        }
+    }
+
+    @Test
+    void testDeleteNoAccess() throws ServiceTask.Empty, ServiceTask.TooShort, ServiceTask.Existing, AccessDeniedException {
+        MUser u = new MUser();
+        u.username = "Alice";
+        u.password = passwordEncoder.encode("Passw0rd!");
+        userRepository.saveAndFlush(u);
+
+        MUser u2 = new MUser();
+        u2.username = "Bob";
+        u2.password = passwordEncoder.encode("Passw0rd!");
+        userRepository.saveAndFlush(u2);
+
+        AddTaskRequest atr = new AddTaskRequest();
+        atr.name = "Bob peut pas l'effacer";
+        atr.deadline = Date.from(new Date().toInstant().plusSeconds(3600));
+        serviceTask.addOne(atr, u);
+
+        long taskID = serviceTask.home(u.id).get(0).id;
+        try{
+            serviceTask.deleteOne(taskID, u2);
+            fail("Aurait du lancer AccessDeniedException");
+        } catch (AccessDeniedException e) {
+            assertEquals(AccessDeniedException.class, e.getClass());
+        }
+        catch (Exception e) {
+            fail("Aurait du lancer AccessDeniedException");
+        }
+
     }
 }

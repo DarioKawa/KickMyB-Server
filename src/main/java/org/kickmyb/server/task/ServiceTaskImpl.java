@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -68,6 +69,7 @@ public class ServiceTaskImpl implements ServiceTask {
         MTask t = new MTask();
         t.name = req.name;
         t.creationDate = DateTime.now().toDate();
+        t.user = user;
         if (req.deadline == null) {
             t.deadline = DateTime.now().plusDays(7).toDate();
         } else {
@@ -79,9 +81,11 @@ public class ServiceTaskImpl implements ServiceTask {
     }
 
     @Override
-    public void updateProgress(long taskID, int value) {
+    public void updateProgress(long taskID, int value,MUser user) throws AccessDeniedException {
         MTask element = repo.findById(taskID).get();
         // TODO validate value is between 0 and 100
+        if (!user.tasks.contains(element))throw new AccessDeniedException("tu n'as pas le droit");
+
         MProgressEvent pe= new MProgressEvent();
         pe.resultPercentage = value;
         pe.completed = value ==100;
@@ -90,6 +94,25 @@ public class ServiceTaskImpl implements ServiceTask {
         element.events.add(pe);
         repo.save(element);
     }
+
+    @Override
+    public void deleteOne(long taskID, MUser user) throws AccessDeniedException {
+        MTask element = repo.findById(taskID).orElseThrow(() -> new IllegalArgumentException("Tâche introuvable"));
+
+        if (element.user.id != user.id) {
+            throw new AccessDeniedException("Tu n'as pas le droit");
+        }
+
+
+
+        user.tasks.removeIf(t -> t.id.equals(taskID));
+
+        repoUser.save(user);
+
+        repo.deleteById(taskID);
+
+    }
+
 
     @Override
     public List<HomeItemResponse> home(Long userID) {
