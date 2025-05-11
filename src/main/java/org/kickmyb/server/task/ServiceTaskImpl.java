@@ -84,7 +84,7 @@ public class ServiceTaskImpl implements ServiceTask {
     public void updateProgress(long taskID, int value,MUser user) throws AccessDeniedException {
         MTask element = repo.findById(taskID).get();
         // TODO validate value is between 0 and 100
-        if (!user.tasks.contains(element))throw new AccessDeniedException("tu n'as pas le droit");
+        if (element.user.id !=  user.id)throw new AccessDeniedException("tu n'as pas le droit");
 
         MProgressEvent pe= new MProgressEvent();
         pe.resultPercentage = value;

@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.kickmyb.server.account.MUser;
 import org.kickmyb.server.account.MUserRepository;
+import org.kickmyb.server.task.MTask;
+import org.kickmyb.server.task.MTaskRepository;
 import org.kickmyb.server.task.ServiceTask;
 import org.kickmyb.transfer.AddTaskRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,9 @@ class ServiceTaskTests {
 
     @Autowired
     private ServiceTask serviceTask;
+
+    @Autowired
+    private MTaskRepository taskRepository;
 
     @Test
     void testAddTask() throws ServiceTask.Empty, ServiceTask.TooShort, ServiceTask.Existing {
@@ -184,5 +189,57 @@ class ServiceTaskTests {
             fail("Aurait du lancer AccessDeniedException");
         }
 
+    }
+
+    @Test
+    void testupdateTask() throws ServiceTask.Empty, ServiceTask.TooShort, ServiceTask.Existing, AccessDeniedException {
+        MUser u = new MUser();
+        u.username = "M. Test";
+        u.password = passwordEncoder.encode("Passw0rd!");
+        userRepository.saveAndFlush(u);
+
+        AddTaskRequest atr = new AddTaskRequest();
+        atr.name = "Tâche de test";
+        atr.deadline = Date.from(new Date().toInstant().plusSeconds(3600));
+        serviceTask.addOne(atr, u);
+
+        long taskID = serviceTask.home(u.id).get(0).id;
+        try {
+            serviceTask.updateProgress(taskID, 50, u);
+            MTask task = taskRepository.findById(taskID).get();
+            assertEquals(50, task.events.get(0).resultPercentage );
+        }
+        catch (AccessDeniedException e) {
+            fail("Aurait pas du lancer AccessDeniedException");
+        }
+    }
+
+    @Test
+    void testupdateTaskNoAcess() throws ServiceTask.Empty, ServiceTask.TooShort, ServiceTask.Existing, AccessDeniedException {
+        MUser u = new MUser();
+        u.username = "Alice";
+        u.password = passwordEncoder.encode("Passw0rd!");
+        userRepository.saveAndFlush(u);
+
+        MUser u2 = new MUser();
+        u2.username = "Bob";
+        u2.password = passwordEncoder.encode("Passw0rd!");
+        userRepository.saveAndFlush(u2);
+
+        AddTaskRequest atr = new AddTaskRequest();
+        atr.name = "Bob peut pas le changer";
+        atr.deadline = Date.from(new Date().toInstant().plusSeconds(3600));
+
+        serviceTask.addOne(atr, u);
+        long taskID = serviceTask.home(u.id).get(0).id;
+        try{
+            serviceTask.updateProgress(taskID, 50, u2);
+            fail("Aurait du lancer AccessDeniedException");
+        } catch (AccessDeniedException e) {
+            assertEquals(AccessDeniedException.class, e.getClass());
+        }
+        catch (Exception e) {
+            fail("Aurait du lancer AccessDeniedException");
+        }
     }
 }
